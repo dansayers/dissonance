@@ -1,0 +1,15 @@
+.switch {
+  height: 28px;
+}
+#note-template {
+  display: none;
+}
+#header-controls {
+  margin-bottom: 0;
+}
+#tone-controls {
+  display: none;
+}
+#note-table {
+  display: table;
+}
