@@ -51,14 +51,6 @@
           </div>
           <div class="row-fluid row-item">
             <div class="span2">
-                <label class="control-label">Root (<span contenteditable class="number-input" id="root-num">440</span>Hz)</label>
-            </div>
-            <div class="span10">
-                <div id="root-slider"></div>
-            </div>
-          </div>
-          <div class="row-fluid row-item">
-            <div class="span2">
               <label class="control-label">Partials (<span contenteditable class="number-input" id="partials-num">6</span>)</label>
             </div>
             <div class="span10">
@@ -81,6 +73,30 @@
               <div class="switch">
                 <input type="checkbox" id="symmetric-checkbox" />
               </div>
+            </div>
+          </div>
+          <div class="row-fluid row-item">
+            <div class="span2">
+                <label class="control-label">Root octave (<span contenteditable class="number-input" id="root-octave-num">4</span>)</label>
+            </div>
+            <div class="span10">
+                <div id="root-octave-slider"></div>
+            </div>
+          </div>
+          <div class="row-fluid row-item">
+            <div class="span2">
+                <label class="control-label">Root note (<span contenteditable class="note-input" id="root-note-name">A</span>)</label>
+            </div>
+            <div class="span10">
+                <div id="root-note-slider"></div>
+            </div>
+          </div>
+          <div class="row-fluid row-item">
+            <div class="span2">
+                <label class="control-label">Root cents (<span contenteditable class="number-input" id="root-cents-num">0</span>)</label>
+            </div>
+            <div class="span10">
+                <div id="root-cents-slider"></div>
             </div>
           </div>
         </div>

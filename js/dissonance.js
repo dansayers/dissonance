@@ -17,6 +17,10 @@ $(function() {
   var sliderOptions;
   var octavesRange = 1;
   var showLowOct = false;
+  var noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  var rootOctave = 4;
+  var rootNote = 9;
+  var rootCents = 0;
   
   google.visualization.events.addListener(chart, 'select', chartSelectHandler);
   $('#clear-button').fadeTo(0,0);
@@ -33,8 +37,6 @@ $(function() {
   
   function handleNumberEnter(e, $element) {
     var val = 1*$element.text();
-    if ($element.is('#root-num'))
-      val = Math.log(val);
     var $slider = $element.parents('.row-item').find('.ui-slider');
     var sliderOptions = $slider.slider('option');
     if (isNaN(val))
@@ -51,6 +53,17 @@ $(function() {
       $slider.parents('.note-row').find('.cents-display').text('0');
       drawChart();
     }
+  }
+  
+  function handleNoteEnter(e, $element) {
+    var val = $element.text();
+    var noteNum = $.inArray(val, noteNames);
+    var $slider = $element.parents('.row-item').find('.ui-slider');
+    var sliderOptions = $slider.slider('option');
+    if (noteNum == -1)
+      val = sliderOptions.value;
+    $slider.slider('value', noteNum);
+    sliderOptions.stop.call($slider, e, {value: noteNum});
   }
   
   function selectElementContents(el) {
@@ -77,25 +90,23 @@ $(function() {
         $(elt).blur();
         return false;
       break;
-//      case 9:  // Tab
       case 38: // Up
         var $numberInputs;
         if ($(elt).is('.note-cents'))
           $numberInputs = $(".note-cents");
         else
-          $numberInputs = $(".number-input:visible");
+          $numberInputs = $(".number-input:visible,.note-input:visible");
         var idx = $numberInputs.index(elt);
-        console.log($(elt));
         var prev = $numberInputs.eq(Math.max(idx-1, 0));
         $(prev).click();
       break;
+      case 9:  // Tab
       case 40: // Down
         var $numberInputs;
         if ($(elt).is('.note-cents'))
           $numberInputs = $(".note-cents");
         else
-          $numberInputs = $(".number-input");
-        console.log($(elt));
+          $numberInputs = $(".number-input:visible,.note-input:visible");
         var idx = $numberInputs.index(elt);
         var next = $numberInputs.eq(idx+1);
         $(next).click();
@@ -104,8 +115,35 @@ $(function() {
     return false;
   }
   
+  function noteKeyDown(e, elt) {
+//    console.log(e.keyCode);
+    var c = String.fromCharCode(e.keyCode).toUpperCase();
+    if (/[A-G]/.test(c)) {
+      $(elt).text(c);
+      $(elt).blur();
+      return false;
+    }
+    switch (e.keyCode) {
+      case 38: // Up
+        var $numberInputs = $(".number-input:visible,.note-input:visible");
+        var idx = $numberInputs.index(elt);
+        var prev = $numberInputs.eq(Math.max(idx-1, 0));
+        $(prev).click();
+      break;
+      case 40: // Down
+      case 9:  // Tab
+        var $numberInputs = $(".number-input:visible,.note-input:visible");
+        var idx = $numberInputs.index(elt);
+        var next = $numberInputs.eq(idx+1);
+        $(next).click();
+      break;
+    }
+    $(elt).blur();
+    return false;
+  }
+  
   $(window).blur(function() {
-    $(".number-input").blur();
+    $(".number-input,.note-input").blur();
   });
   
   $(".number-input")
@@ -121,8 +159,23 @@ $(function() {
     .mouseup(function (e) {
       e.preventDefault();
     });
+  
+  $(".note-input")
+    .keydown(function(e) {
+      noteKeyDown(e, this);
+    })
+    .blur(function(e) {
+      handleNoteEnter(e, $(this));
+    })
+    .click(function () {
+      selectElementContents(this);
+    })
+    .mouseup(function (e) {
+      e.preventDefault();
+    });
+  
   $("label").click(function() {
-    $(this).find('.number-input').focus();
+    $(this).find('.number-input,.note-input').focus();
   });
   
   drawChart();
@@ -186,22 +239,67 @@ $(function() {
     .slider(sliderOptions);
 
   sliderOptions = {
-    min: Math.log(27.5),
-    max: Math.log(9956.06348),
-    value: Math.log(440),
-    step: Math.log(Math.pow(2, 1/12.0)),
+    min: 1,
+    max: 8,
+    value: rootOctave,
+    step: 1,
     slide: function(event, ui) {
-      $('#root-num').text(Math.exp(ui.value).toFixed(1));
+      $('#root-octave-num').text(ui.value);
     },
     stop: function(event, ui) {
-      baseFreq = Math.exp(ui.value);
-      $('#root-num').text(baseFreq.toFixed(1));
+      rootOctave = ui.value;
+      $('#root-octave-num').text(rootOctave);
       $('#reset-button').fadeIn(100);
+      updateBaseFreq();
       drawChart();
     }
   };
   if (!isPhoneDevice) sliderOptions.animate = true;
-  $('#root-slider')
+  $('#root-octave-slider')
+    .on('mousedown', sliderMouseDown)
+    .on('touchstart', sliderMouseDown)
+    .slider(sliderOptions);
+  
+  sliderOptions = {
+    min: 0,
+    max: 11,
+    value: rootNote,
+    step: 1,
+    slide: function(event, ui) {
+      $('#root-note-name').text(noteNames[ui.value]);
+    },
+    stop: function(event, ui) {
+      rootNote = ui.value;
+      $('#root-note-name').text(noteNames[ui.value]);
+      $('#reset-button').fadeIn(100);
+      updateBaseFreq();
+      drawChart();
+    }
+  };
+  if (!isPhoneDevice) sliderOptions.animate = true;
+  $('#root-note-slider')
+    .on('mousedown', sliderMouseDown)
+    .on('touchstart', sliderMouseDown)
+    .slider(sliderOptions);
+  
+  sliderOptions = {
+    min: -49,
+    max: 50,
+    value: rootCents,
+    step: 1,
+    slide: function(event, ui) {
+      $('#root-cents-num').text(ui.value);
+    },
+    stop: function(event, ui) {
+      rootCents = ui.value;
+      $('#root-cents-num').text(rootCents);
+      $('#reset-button').fadeIn(100);
+      updateBaseFreq();
+      drawChart();
+    }
+  };
+  if (!isPhoneDevice) sliderOptions.animate = true;
+  $('#root-cents-slider')
     .on('mousedown', sliderMouseDown)
     .on('touchstart', sliderMouseDown)
     .slider(sliderOptions);
@@ -247,8 +345,18 @@ $(function() {
     $slider.slider('value', val);
     $slider.slider('option', 'stop').call($slider, e, {value: val});
     
-    val = Math.log(440);
-    $slider = $('#root-slider');
+    val = 4;
+    $slider = $('#root-octave-slider');
+    $slider.slider('value', val);
+    $slider.slider('option', 'stop').call($slider, e, {value: val});
+    
+    val = 9;
+    $slider = $('#root-note-slider');
+    $slider.slider('value', val);
+    $slider.slider('option', 'stop').call($slider, e, {value: val});
+    
+    val = 0;
+    $slider = $('#root-cents-slider');
     $slider.slider('value', val);
     $slider.slider('option', 'stop').call($slider, e, {value: val});
     
@@ -260,7 +368,15 @@ $(function() {
     $('#reset-button').fadeOut(100);
   });
   
-  function sliderMouseDown(e) { // disable clicks on track
+  function updateBaseFreq() {
+    var centsFromA4 = rootCents + (rootNote - 9 + 12 * (rootOctave - 4)) * 100;
+    console.log('rootNote: '+rootNote);
+    console.log('updateBaseFreq: '+centsFromA4);
+    baseFreq = 440 * Math.pow(2, centsFromA4 / 1200.0);
+    console.log('baseFreq: '+baseFreq);
+  }
+  
+  function sliderMouseDown(e) {
     if ($(e.target).is('.ui-slider-handle'))
       return;
     e.stopImmediatePropagation();
@@ -362,7 +478,7 @@ $(function() {
           }
           dataTable = new google.visualization.arrayToDataTable(jsonData.data);
           var max = dataTable.getColumnRange(1).max;
-//          var min = dataTable.getColumnRange(1).min;
+          var min = dataTable.getColumnRange(1).min;
           var chartHeightPercent = 80 - 10 * (octavesRange > 1);
           if (octavesRange > 1 && isPhoneDevice)
             chartHeightPercent = 80;
@@ -378,7 +494,7 @@ $(function() {
               viewWindowMode:'explicit',
               viewWindow: {
                 max:max*1.01,
-                min:0//min*0.95
+                min:min*0.95
               }
             },
             legend: 'none',
