@@ -6,6 +6,8 @@ $rootFreq = 440;
 $dropoff = 0.8;
 $dronePartials = 6;
 $symmetric = false;
+$octavesRange = 1;
+$showLowOctave = 1;
 
 if (isset($_GET['np']))
   $dronePartials = 1*$_GET['np'];
@@ -13,6 +15,10 @@ if (isset($_GET['root']))
   $rootFreq = 1*$_GET['root'];
 if (isset($_GET['dropoff']))
   $dropoff = 1*$_GET['dropoff'];
+if (isset($_GET['octs']))
+  $octavesRange = 1*$_GET['octs'];
+if (isset($_GET['slo']))
+  $showLowOctave = 1*($_GET['slo'] == 'true');
 $symmetric = (isset($_GET['sym']) && $_GET['sym']=='true');
 
 $root = new Note($rootFreq, $dronePartials, $dropoff);
@@ -40,10 +46,10 @@ foreach($note->COMPONENT as $obj)
   $compareList .= $obj->FREQUENCY.','.$obj->AMPLITUDE.',';
 $compareList = substr($compareList, 0, -1);
 
-$minrange = $rootFreq;
-$maxrange = 2*$rootFreq;
+$minrange = $rootFreq / (1+$showLowOctave);
+$maxrange = pow(2, $octavesRange-$showLowOctave)*$rootFreq;
 
-$cmd = "./dissonance/dissonance -compare $compareList -partials $partialList -minrange $minrange -maxrange $maxrange";
+$cmd = "./dissonance/dissonance -compare $compareList -partials $partialList -rootfreq $rootFreq -minrange $minrange -maxrange $maxrange";
 //die($cmd);
 exec($cmd, $json);
 //die_r($json);

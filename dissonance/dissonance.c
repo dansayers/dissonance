@@ -22,7 +22,7 @@ typedef struct PARTIAL {
 PARTIAL partials[MAX_PARTIALS] = {0};
 PARTIAL compareTone[MAX_TONE_PARTIALS] = {0};
 int numPartials = 0, numTonePartials = 0;
-float minRange = 0, maxRange = 0;
+float minRange = 0, maxRange = 0, rootFreq = 0;
 
 void getCurve();
 float getRoughness(PARTIAL a, PARTIAL b);
@@ -107,6 +107,11 @@ int main(int argc, const char * argv[]) {
             maxRange = atof(argv[i]);
             continue;
         }
+        if (strcmp(arg, "-rootfreq") == 0) {
+            i++;
+            rootFreq = atof(argv[i]);
+            continue;
+        }
     }
     if (minRange == 0)
         printf("{\"error\": \"missing min range\"}\n");
@@ -124,6 +129,8 @@ int main(int argc, const char * argv[]) {
 void getCurve() {
     float minCents = round(OCTAVE_DIVISIONS * logf(minRange)/logf(2));
     float maxCents = round(OCTAVE_DIVISIONS * logf(maxRange)/logf(2));
+    float rootCents = round(OCTAVE_DIVISIONS * logf(rootFreq)/logf(2));
+    int adjustCents = (int)(minCents - rootCents);
     PARTIAL compareAll[MAX_PARTIALS+MAX_TONE_PARTIALS] = {0};
     memcpy(compareAll, partials, numPartials*sizeof(PARTIAL));
 //     printf("{\"data\":[[\"Cents\",\"Dissonance\"]");
@@ -145,7 +152,7 @@ void getCurve() {
         dissonances[(int)(i-minCents)] = dissonance;
 //         printf(",[%d,%.5f]", (int)(i-minCents), dissonance);
     }
-    printf("{\"data\":[[\"Cents\",\"Dissonance\",\"Minima\"]");
+    printf("{\"data\":[[\"Cents\",\"Dissonance\",\"Dissonance\"]");
     char minima[10];
     for (int i=0; i<=range; i++) {
         float data = dissonances[i];
@@ -155,7 +162,7 @@ void getCurve() {
                 sprintf(minima, "%f", data);
         } else if (dissonances[i-1] > data && (i == range || dissonances[i+1] > data))
             sprintf(minima, "%f", data);
-        printf(",[%d,%.5f,%s]", i, data, minima);
+        printf(",[%d,%.5f,%s]", i+adjustCents, data, minima);
     }
     printf("]}");
 }
