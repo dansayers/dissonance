@@ -23,7 +23,9 @@ $(function() {
   var rootCents = 0;
   var currentOscillators = [];
   var currentGainNodes = [];
-  var noteFadeTime = 100;
+  var noteFadeTime = 40;
+  var mainVolume = 0.2;
+  var fadeFPS = 180;
   
   google.visualization.events.addListener(chart, 'select', chartSelectHandler);
   $('#clear-button').fadeTo(0,0);
@@ -78,7 +80,6 @@ $(function() {
   }
   
   function numberKeyDown(e, elt) {
-//    console.log(e.keyCode);
     if (e.keyCode > 47 && e.keyCode < 58)
       return true;
     switch (e.keyCode) {
@@ -119,7 +120,6 @@ $(function() {
   }
   
   function noteKeyDown(e, elt) {
-//    console.log(e.keyCode);
     var c = String.fromCharCode(e.keyCode).toUpperCase();
     if (/[A-G]/.test(c)) {
       $(elt).text(c);
@@ -300,16 +300,17 @@ $(function() {
     .on('touchstart', sliderMouseDown)
     .slider(sliderOptions);
   
+  $('#dropoff-num').text(dropoff.toFixed(2));
   sliderOptions = {
     min: 0,
     max: 1,
-    value: 0.2,
+    value: dropoff,
     step: 0.05,
     slide: function(event, ui) {
       $('#dropoff-num').text(ui.value.toFixed(2));
     },
     stop: function(event, ui) {
-      dropoff = 1-ui.value;
+      dropoff = ui.value;
       updateNoteSound();
       $('#dropoff-num').text(ui.value.toFixed(2));
       $('#reset-button').fadeIn(100);
@@ -433,34 +434,34 @@ $(function() {
   }
   
   function audioFadeIn(g) {
-    var fps = 10;
-    var fpsDelay = 1000.0/fps
+    var fpsDelay = 1000.0/fadeFPS;
     var t = 0;
     g.gain.value = 0.0;
     var interval = setInterval(function() {
       t += fpsDelay;
       var angle = 0.5 * (1 - t / noteFadeTime) * Math.PI;
       if (t > noteFadeTime) {
+        g.gain.value = mainVolume;
         clearInterval(interval);
         return;
       }
-      g.gain.value = 0.2*Math.cos(angle);
+      g.gain.value = mainVolume*Math.cos(angle);
     }, fpsDelay);
   }
   
-  function audioFadeOut(g) {
-    var fps = 10;
-    var fpsDelay = 1000.0/fps
+  function audioFadeOut(g, o) {
+    var fpsDelay = 1000.0/fadeFPS;
     var t = 0;
-    g.gain.value = 0.2;
+    g.gain.value = mainVolume;
     var interval = setInterval(function() {
       t += fpsDelay;
       var angle = 0.5 * (1 - t / noteFadeTime) * Math.PI;
       if (t > noteFadeTime) {
+        o.noteOff(0);
         clearInterval(interval);
         return;
       }
-      g.gain.value = 0.2*Math.sin(angle);
+      g.gain.value = mainVolume*Math.sin(angle);
     }, fpsDelay);
   }
   
@@ -468,8 +469,11 @@ $(function() {
     if (!usingWebAudio) return;
     if (!waveTable) updateNoteSound();
     var o = ctx.createOscillator();
+    console.log(o);
     o.setWaveTable(waveTable);
+    console.log(waveTable);
     var g = ctx.createGainNode();
+    console.log(g);
     o.frequency.value = baseFreq * Math.pow(2.0, value / 1200.0);
     o.connect(g);
     g.connect(ctx.destination);
@@ -498,8 +502,7 @@ $(function() {
         return;
       var g = currentGainNodes[i];
       var currentTime = ctx.currentTime;
-      audioFadeOut(g);
-      setTimeout(function() {o.noteOff(0);}, noteFadeTime * 1000 / o.frequency.value);
+      audioFadeOut(g, o);
       currentOscillators.splice(i, 1);
       currentGainNodes.splice(i, 1);
     });
@@ -510,9 +513,7 @@ $(function() {
     $.each(currentOscillators, function(i, o) {
       var g = currentGainNodes[i];
       var currentTime = ctx.currentTime;
-      console.log(currentTime);
-      audioFadeOut(g);
-      setTimeout(function() {o.noteOff(0);}, noteFadeTime * 1000 / o.frequency.value);
+      audioFadeOut(g, o);
     });
     currentOscillators = [];
     currentGainNodes = [];
@@ -592,7 +593,7 @@ $(function() {
           if (ind >= 0 && ind < numRows)
             dataTable.setCell(ind, 3, dataTable.getValue(ind, 1));
           $.each(notes, function(i, note) {
-            var ind = 1200*showLowOct+note;
+            var ind = Math.round(1200*showLowOct+note);
             if (ind >= 0 && ind < numRows)
               dataTable.setCell(ind, 3, dataTable.getValue(ind, 1));
           });
@@ -614,7 +615,7 @@ $(function() {
           });
         }
       });
-    }, 200);
+    }, noteFadeTime);
     $('.iotic-logo').css('left', $('#page-title').offset().left+2+'px');
     $('.container').css('min-height', $(document).innerHeight()+'px');
     $('.footer').show();

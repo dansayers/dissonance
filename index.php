@@ -59,7 +59,7 @@
           </div>
           <div class="row-fluid row-item">
             <div class="span2">
-              <label class="control-label">Dropoff (<span contenteditable class="number-input" id="dropoff-num">0.20</span>)</label>
+              <label class="control-label">Tone (<span contenteditable class="number-input" id="dropoff-num">0.20</span>)</label>
             </div>
             <div class="span10">
               <div id="dropoff-slider"></div>
