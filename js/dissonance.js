@@ -21,6 +21,9 @@ $(function() {
   var rootOctave = 4;
   var rootNote = 9;
   var rootCents = 0;
+  var currentOscillators = [];
+  var currentGainNodes = [];
+  var noteFadeTime = 100;
   
   google.visualization.events.addListener(chart, 'select', chartSelectHandler);
   $('#clear-button').fadeTo(0,0);
@@ -143,7 +146,7 @@ $(function() {
   }
   
   $(window).blur(function() {
-    $(".number-input,.note-input").blur();
+    $(document.activeElement).blur();
   });
   
   $(".number-input")
@@ -190,13 +193,6 @@ $(function() {
 //    $('#chart_div').css('transform', 'scale('+scale+',1)');
 //  });
   
-  $('#active-checkbox').change(function() {
-    if ($(this).is(':checked'))
-      play();
-    else
-      stop();
-  });
-  
   $('#symmetric-checkbox').change(function() {
     symmetric = $(this).is(':checked');
     $('#reset-button').fadeIn(100);
@@ -240,7 +236,7 @@ $(function() {
 
   sliderOptions = {
     min: 1,
-    max: 8,
+    max: 6,
     value: rootOctave,
     step: 1,
     slide: function(event, ui) {
@@ -328,6 +324,8 @@ $(function() {
   
   $('#clear-button').click(function() {
     notes = [];
+    removeAllOscillators();
+    addOscillator(0);
     drawChart();
     var $div = $('<div></div>');
     $(".note-row:not(#root-row):not(#note-template):not(#add-note)").remove();
@@ -370,10 +368,9 @@ $(function() {
   
   function updateBaseFreq() {
     var centsFromA4 = rootCents + (rootNote - 9 + 12 * (rootOctave - 4)) * 100;
-    console.log('rootNote: '+rootNote);
-    console.log('updateBaseFreq: '+centsFromA4);
     baseFreq = 440 * Math.pow(2, centsFromA4 / 1200.0);
-    console.log('baseFreq: '+baseFreq);
+    removeAllOscillators();
+    addAllOscillators();
   }
   
   function sliderMouseDown(e) {
@@ -403,15 +400,6 @@ $(function() {
     $slider.slider('option', 'stop').call($slider, e, {value: val});
   };
   
-  function stop() {
-    if (!usingWebAudio) return;
-    $.each(all_oscillators, function(i, o) {
-      o.noteOff(0);
-      // should also destroy them?
-    });
-    all_oscillators = [];
-  }
-  
   function updateNoteSound() {
     var curve,
       curveSize = numPartials+1;
@@ -426,27 +414,108 @@ $(function() {
       if (symmetric) i++;
     }
     waveTable = ctx.createWaveTable(curve, curve);
+    removeAllOscillators();
+    addAllOscillators();
   }
   
-  function play() {
+  $('#active-checkbox').change(function() {
+    if ($(this).is(':checked'))
+      addAllOscillators();
+    else
+      removeAllOscillators();
+  });
+  
+  function addAllOscillators() {
+    addOscillator(0);
+    $.each(notes, function(i, note) {
+      addOscillator(note);
+    });
+  }
+  
+  function audioFadeIn(g) {
+    var fps = 10;
+    var fpsDelay = 1000.0/fps
+    var t = 0;
+    g.gain.value = 0.0;
+    var interval = setInterval(function() {
+      t += fpsDelay;
+      var angle = 0.5 * (1 - t / noteFadeTime) * Math.PI;
+      if (t > noteFadeTime) {
+        clearInterval(interval);
+        return;
+      }
+      g.gain.value = 0.2*Math.cos(angle);
+    }, fpsDelay);
+  }
+  
+  function audioFadeOut(g) {
+    var fps = 10;
+    var fpsDelay = 1000.0/fps
+    var t = 0;
+    g.gain.value = 0.2;
+    var interval = setInterval(function() {
+      t += fpsDelay;
+      var angle = 0.5 * (1 - t / noteFadeTime) * Math.PI;
+      if (t > noteFadeTime) {
+        clearInterval(interval);
+        return;
+      }
+      g.gain.value = 0.2*Math.sin(angle);
+    }, fpsDelay);
+  }
+  
+  function addOscillator(value) {
     if (!usingWebAudio) return;
-    stop();
-    
     if (!waveTable) updateNoteSound();
-    for (var i = 0; i < notes.length+1; i++) {
-      var o = ctx.createOscillator();
-      o.setWaveTable(waveTable);
-      var g = ctx.createGainNode();
-      if (i == 0)
-        o.frequency.value = baseFreq;
-      else
-        o.frequency.value = baseFreq * Math.pow(2.0, notes[i-1] / 1200.0);
-      o.connect(g);
-      g.gain.value = 0.1;
-      g.connect(ctx.destination);
+    var o = ctx.createOscillator();
+    o.setWaveTable(waveTable);
+    var g = ctx.createGainNode();
+    o.frequency.value = baseFreq * Math.pow(2.0, value / 1200.0);
+    o.connect(g);
+    g.connect(ctx.destination);
+    audioFadeIn(g);
+    if ($('#active-checkbox').is(':checked'))
       o.noteOn(0);
-      all_oscillators.push(o);
-    }
+    currentOscillators.push(o);
+    currentGainNodes.push(g);
+  }
+  
+  function changeOscillator(oldval, newval) {
+    if (!usingWebAudio) return;
+    $.each(currentOscillators, function(i, o) {
+      if (!0 || oldval != Math.round(1200.0*Math.log(o.frequency.value / baseFreq) / 0.6931471806))
+        return;
+      removeOscillator(oldval);
+      addOscillator(newval);
+    });
+  }
+  
+  function removeOscillator(value) {
+    if (!usingWebAudio) return;
+    $.each(currentOscillators, function(i, o) {
+      if (!o) return;
+      if (value != Math.round(1200.0*Math.log(o.frequency.value / baseFreq) / 0.6931471806))
+        return;
+      var g = currentGainNodes[i];
+      var currentTime = ctx.currentTime;
+      audioFadeOut(g);
+      setTimeout(function() {o.noteOff(0);}, noteFadeTime * 1000 / o.frequency.value);
+      currentOscillators.splice(i, 1);
+      currentGainNodes.splice(i, 1);
+    });
+  }
+      
+  function removeAllOscillators() {
+    if (!usingWebAudio) return;
+    $.each(currentOscillators, function(i, o) {
+      var g = currentGainNodes[i];
+      var currentTime = ctx.currentTime;
+      console.log(currentTime);
+      audioFadeOut(g);
+      setTimeout(function() {o.noteOff(0);}, noteFadeTime * 1000 / o.frequency.value);
+    });
+    currentOscillators = [];
+    currentGainNodes = [];
   }
   
   function drawChart() {
@@ -464,9 +533,7 @@ $(function() {
         octs: octavesRange,
         slo: showLowOct
       });
-      console.log(url);
-      if ($('#active-checkbox').is(':checked'))
-        play();
+//      console.log(url);
       $.ajax({
         url: url,
         dataType:"json",
@@ -585,9 +652,11 @@ $(function() {
             $slider.data("value", ui.value);
             return;
         }
-        var index = notes.indexOf($slider.data("value"));
+        var oldval = $slider.data("value");
+        var index = notes.indexOf(oldval);
         if (index !== -1) {
             notes[index] = ui.value;
+            changeOscillator(oldval, ui.value);
             drawChart();
             $centsDisplay.text(ui.value);
             $slider.data("value", ui.value);
@@ -634,6 +703,7 @@ $(function() {
       });
 
     $noteRow.show();
+    addOscillator(value);
     $noteRow.find('.close').click(function() {
       var $noteRow = $(this).parents('.note-row');
       var value = parseFloat($noteRow.find('.cents-display').text());
@@ -655,7 +725,8 @@ $(function() {
         return;
       if ($(this).find('.cents-display').text() != value)
         return;
-      $(this).remove()
+      $(this).remove();
+      removeOscillator(value);
       if (notes.length == 0)
         $('#clear-button').fadeTo(100,0);
     });
@@ -677,6 +748,7 @@ $(function() {
     var selection = chart.getSelection()[0];
     if (typeof(selection) == 'undefined') return;
     var value = dataTable.getValue(selection.row, 0);
+    if (value == 0) return;
     addNoteValue(value);
   }
 });
