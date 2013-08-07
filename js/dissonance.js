@@ -469,11 +469,8 @@ $(function() {
     if (!usingWebAudio) return;
     if (!waveTable) updateNoteSound();
     var o = ctx.createOscillator();
-    console.log(o);
     o.setWaveTable(waveTable);
-    console.log(waveTable);
     var g = ctx.createGainNode();
-    console.log(g);
     o.frequency.value = baseFreq * Math.pow(2.0, value / 1200.0);
     o.connect(g);
     g.connect(ctx.destination);
