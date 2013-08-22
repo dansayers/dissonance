@@ -8,6 +8,7 @@ $dronePartials = 6;
 $symmetric = false;
 $octavesRange = 1;
 $showLowOctave = 1;
+$mainVolume = 7.943282347;
 
 if (isset($_GET['np']))
   $dronePartials = 1*$_GET['np'];
@@ -19,6 +20,8 @@ if (isset($_GET['octs']))
   $octavesRange = 1*$_GET['octs'];
 if (isset($_GET['slo']))
   $showLowOctave = 1*($_GET['slo'] == 'true');
+if (isset($_GET['vol']))
+  $mainVolume = 7.943282347*$_GET['vol'];
 $symmetric = (isset($_GET['sym']) && $_GET['sym']=='true');
 
 $root = new Note($rootFreq, $dronePartials, $dropoff);
@@ -40,6 +43,7 @@ foreach($sound->COMPONENT as $obj)
 $partialList = substr($partialList, 0, -1);
 
 $note = new Note(1, $dronePartials, $dropoff);
+//$note = new Note(1, 1, $dropoff);
 
 $compareList = '';
 foreach($note->COMPONENT as $obj)

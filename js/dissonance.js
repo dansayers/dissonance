@@ -3,6 +3,7 @@ $(function() {
   var baseFreq = 440;
   var dropoff = 0.8;
   var numPartials = 6;
+  var decibels = 80;
   var notes = [];
   var all_components = [];
   var all_oscillators = [];
@@ -235,6 +236,29 @@ $(function() {
     .slider(sliderOptions);
 
   sliderOptions = {
+    min: 62,
+    max: 98,
+    value: 80,
+    step: 1,
+    slide: function(event, ui) {
+      $('#volume-num').text(ui.value);
+    },
+    stop: function(event, ui) {
+      $('#volume-num').text(ui.value);
+      decibels = ui.value;
+      mainVolume = 0.2*Math.pow(10, (decibels-80)/10.0);
+      updateNoteSound();
+      $('#reset-button').fadeIn(100);;
+      drawChart();
+    }
+  };
+  if (!isPhoneDevice) sliderOptions.animate = true;
+  $('#volume-slider')
+    .on('mousedown', sliderMouseDown)
+    .on('touchstart', sliderMouseDown)
+    .slider(sliderOptions);
+
+  sliderOptions = {
     min: 1,
     max: 6,
     value: rootOctave,
@@ -339,8 +363,13 @@ $(function() {
     if ($('#symmetric-checkbox').prop('checked'))
       $('#symmetric-checkbox').click();
     
-    val = 0.2;
+    val = 0.8;
     $slider = $('#dropoff-slider');
+    $slider.slider('value', val);
+    $slider.slider('option', 'stop').call($slider, e, {value: val});
+    
+    val = 80;
+    $slider = $('#volume-slider');
     $slider.slider('value', val);
     $slider.slider('option', 'stop').call($slider, e, {value: val});
     
@@ -529,7 +558,8 @@ $(function() {
         root: baseFreq,
         dropoff: dropoff,
         octs: octavesRange,
-        slo: showLowOct
+        slo: showLowOct,
+        vol: mainVolume
       });
 //      console.log(url);
       $.ajax({

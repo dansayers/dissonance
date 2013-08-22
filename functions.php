@@ -23,8 +23,9 @@ class SinComponent {
   public $AMPLITUDE;
   
   public function __construct($freq, $amp) {
+    global $mainVolume;
     $this->FREQUENCY = $freq;
-    $this->AMPLITUDE = $amp;
+    $this->AMPLITUDE = $amp*$mainVolume;
   }
   
   public function roughness(SinComponent $that) {

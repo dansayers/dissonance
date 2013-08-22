@@ -53,6 +53,14 @@
           </div>
           <div class="row-fluid row-item">
             <div class="span2">
+              <label class="control-label">Volume (<span contenteditable class="number-input" id="volume-num">80</span>dB)</label>
+            </div>
+            <div class="span10">
+              <div id="volume-slider"></div>
+            </div>
+          </div>
+          <div class="row-fluid row-item">
+            <div class="span2">
               <label class="control-label">Partials (<span contenteditable class="number-input" id="partials-num">6</span>)</label>
             </div>
             <div class="span10">
